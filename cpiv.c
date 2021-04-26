@@ -7,23 +7,26 @@
 #include <stdio.h>                     
 #include <stdlib.h>
 
-
 void print_matrix(double **, int);
 void print_col_vector(double *, int);
 
 enum output_type {basic, verbose};
 
-// Parameters for program
+// Parameters
+const enum output_type output = verbose;
 const int M = 5;
 const int N = 5;
-const double eps = 1e-10;
-const enum output_type output = verbose;
+const double eps = 1e-5;
 
+/**
+ * @brief Free an arbitrary colsxn matrix (double **) matrix
+ */
 void free_matrix(double **mat, int cols) {
     for (int i = 0; i < cols; i++)
         free(mat[i]);
     free(mat);
 }
+
 /**
  * @brief Compute the LU decomposition of an nxn square, real matrix a in place using pivoting.
  * The pivoting strategy is preserved within the unitary permutation matrix *p, which has an (n+1)th
@@ -128,7 +131,7 @@ void lower_upper(double **a, double **lower, double **upper, int n) {
 int invert(double **a, double **inverse, int n) {
     int *perm = (int *)malloc(sizeof(int) * n);
     lu_decomposition_with_pivoting(a, n, 1e-20, perm);
-    // j = perm[i] is row of original matrix in the ith row of the matrix
+    // Assembly corresponding column vector of identity matrix using permutation matrix
     for (int j = 0; j < n; j++) {
         for (int i = 0; i < n; i++) {
             if (perm[i] == j)
@@ -149,7 +152,10 @@ int invert(double **a, double **inverse, int n) {
     return 1;
 }
 
-// Compute the sign of a scalar
+/**
+ * @brief Computes sign(d) for any scalar d
+ * @return <int> 1 if d >= 0, otherwise -1 
+ */
 int sign(double d) { return ((d >= 0) ? 1: -1); }
 
 /**
@@ -203,8 +209,10 @@ void print_rect(double **a, int m, int n) {
  * @return <int> rank of matrix  
  */
 int rank(double **a, int m, int n, double epsilon) {
+    if (output == verbose) printf("Initializing QR factorization by HH Transformations:\n");
     double z[m], v[m], sum_sqs, sum;
     for (int k = 0; k < m; k++) {
+        if (output == verbose) printf("k = %d\n", k);
         reset(v, m);
         reset(z, m);
         sum_sqs = 0.0;
@@ -228,7 +236,7 @@ int rank(double **a, int m, int n, double epsilon) {
             for (int i = k; i < n; i++) {
                 a[i][j] -= 2 * v[i - k] * sum;
             }
-            if (output == verbose) print_rect(a, m, n);
+           if (output == verbose) print_rect(a, m, n);
         }    
     }
     // Determine rank of matrix with given tolerance epsilon
@@ -254,7 +262,7 @@ double det(double **a, int n) {
     for (int i = 1; i < n; i++)
         det *= a[i][i];
     free(perm);
-    // Compute determinant depending on swap parity:
+    // Compute determinant depending on swap parity dervied from permutation operations:
     return (!(tperm % 2)) ? det : -det;
 }
 
@@ -295,15 +303,12 @@ void multiply(double **a, double **b, double **c, int n) {
 }
 
 int main(void) {
-
-    
-
     // Initialize MxN real matrix rmat
     double rect[M][N] = {
-        {8, 1, 6, 2, 1}, 
-        {3, 5, 7, 5, 6}, 
-        {4, 9, 2, 1, 1},
-        {2, 1, 6, 1, 6}, 
+        {8, 1, 1, 2, 1}, 
+        {3, 5, 5, 5, 6}, 
+        {4, 9, 9, 1, 1},
+        {2, 1, 1, 1, 6}, 
         {2, 2, 2, 2, 1}
     };
 
@@ -358,7 +363,6 @@ int main(void) {
     printf("rmat \n");
     print_rect(rmat, M, N);
     
-    
     if (output == verbose) {
         printf("Decomposing matrix into LU factorization: \n");
         lu_decomposition_with_pivoting(copy1, N, 1e-20, P);
@@ -375,18 +379,18 @@ int main(void) {
     printf("Inverse: \n");
     print_matrix(inverse, N);
     if (output == verbose) {
-        printf("A^-1*A = I:\n");
+        printf("Verifying result,\nA^-1*A = I:\n");
         multiply(inverse, matrix, product2, N);
         print_matrix(product2, N);
     }
     printf("det(matrix) = %f\n", det(matrix, N));
-    printf("Rank(rmat): %i\n", rank(matrix, M, N, eps));
-   
+    printf("Rank(rmat): %i\n", rank(rmat, M, N, eps));
+    // Free allocated memory
     free_matrix(lower, N);
-    free(upper);
-    free(matrix);
-    free(product);
-    free(copy2);
+    free_matrix(upper, N);
+    free_matrix(product, N);
+    free_matrix(copy1, N);
+    free_matrix(copy2, N);
+    free_matrix(inverse, N);
     free(P);
-    free(inverse);
 }

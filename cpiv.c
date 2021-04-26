@@ -1,22 +1,23 @@
 /*
     * John Marangola    
-    * Inverse, Determinant, Rank
+    * Inverse, Determinant, and Rank
 */
 
 #include <math.h>     
 #include <stdio.h>                     
 #include <stdlib.h>
 
-void print_matrix(double **, int);
-void print_col_vector(double *, int);
-
 enum output_type {basic, verbose};
-
 // Parameters
 const enum output_type output = verbose;
-const int M = 5;
+const enum output_type qr_output = basic;
+
 const int N = 5;
+// Tolerance to accumulation (used for rank computation)
 const double eps = 1e-5;
+
+void print_matrix(double **, int);
+void print_col_vector(double *, int);
 
 /**
  * @brief Free an arbitrary colsxn matrix (double **) matrix
@@ -33,7 +34,7 @@ void free_matrix(double **mat, int cols) {
  * element equal to the number of row/col exchanges performed in the decomposition.
  * @param epsilon_zero Minimum threshold for non-singularity based on numerical accumulation 
  * @c O(n^3)
- * @return <int> returns 1 if a is succesfully decompose, otherwise 0.
+ * @return <int> returns 1 if a is succesfully decompose, otherwise returns 0 and sets elements of inverse to 0.
  */
 int lu_decomposition_with_pivoting(double **a, int n, double epsilon_zero, int *p) {
     int k, i, j, r_max_index;
@@ -53,7 +54,7 @@ int lu_decomposition_with_pivoting(double **a, int n, double epsilon_zero, int *
         }
         // Check if singular within numerical bounds of epsilon_zero
         if (r_max < epsilon_zero) {
-            printf("Matrix is singular.\n");
+            printf("Matrix is singular and cannot be inverted!\n");
             return 0; 
         }
         if (r_max_index != i) {
@@ -122,6 +123,15 @@ void lower_upper(double **a, double **lower, double **upper, int n) {
 }
 
 /**
+ * @brief Set all element of matrix a to value
+ */
+void set_matrix(double **a, int n, int value) {
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) a[i][j] = value;
+    }
+}
+
+/**
  * @brief Computes and stores the inverse of a real, square (nxn) matrix a in
  * inverse. Utilizes LU decomposition with pivoting, forward substitution and back substitution
  * to solve for the inverse of a matrix providing that it is nonsingular.
@@ -146,6 +156,11 @@ int invert(double **a, double **inverse, int n) {
         for (int i = n - 1; i >= 0; i--) {
             for (int k = i + 1; k < n; k++)
                 inverse[i][j] -= a[i][k] * inverse[k][j];
+            if (a[i][i] == 0) {
+                printf("Singular matrix.\n");
+                set_matrix(a, n, 0);
+                return 0;
+            }
             inverse[i][j] = inverse[i][j] / a[i][i];
         }
     }
@@ -203,16 +218,19 @@ void print_rect(double **a, int m, int n) {
 }
 
 /**
- * @brief Computes the rank of a real-valued mxn matrix a.
+ * @brief Computes the rank of a real-valued mxm matrix a.
  * Method utilizes a rank-revealing QR factorization (RRQR)
+ * by the implementing the method of Householder Transformations to
+ * factor A into QR. We focus on only computing rank(A) for this implementation
+ * by performing the RRQR factorization in-place on matrix a. 
  * @param epsilon tolerance to numerical accumulation 
  * @return <int> rank of matrix  
  */
-int rank(double **a, int m, int n, double epsilon) {
-    if (output == verbose) printf("Initializing QR factorization by HH Transformations:\n");
+int rank(double **a, int m, double epsilon) {
+    if (qr_output == verbose) printf("Initializing QR factorization by HH Transformations:\n");
     double z[m], v[m], sum_sqs, sum;
     for (int k = 0; k < m; k++) {
-        if (output == verbose) printf("k = %d\n", k);
+        if (qr_output == verbose) printf("k = %d\n", k);
         reset(v, m);
         reset(z, m);
         sum_sqs = 0.0;
@@ -231,17 +249,17 @@ int rank(double **a, int m, int n, double epsilon) {
         // Apply the Householder transformation to the current matrix
         for (int j = k; j < m; j++) {
             sum = 0.0;
-            for (int i = k; i < n; i++)
+            for (int i = k; i < m; i++)
                 sum += v[i - k] * a[i][j];
-            for (int i = k; i < n; i++) {
+            for (int i = k; i < m; i++) {
                 a[i][j] -= 2 * v[i - k] * sum;
             }
-           if (output == verbose) print_rect(a, m, n);
+           if (qr_output == verbose) print_matrix(a, m);
         }    
     }
     // Determine rank of matrix with given tolerance epsilon
     int rank = 0;
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < m; i++)
         if (fabs(a[i][i]) > epsilon) rank++;
     return rank;
 }
@@ -297,22 +315,22 @@ void multiply(double **a, double **b, double **c, int n) {
         for (int j = 0; j < n; j++) {
             c[i][j] = 0.0;
             for (int k = 0; k < n; k++)
-                c[i][j] += a[i][k]*b[k][j];
+                c[i][j] += a[i][k] * b[k][j];
         }
     }
 }
 
 int main(void) {
-    // Initialize MxN real matrix rmat
-    double rect[M][N] = {
-        {8, 1, 1, 2, 1}, 
-        {3, 5, 5, 5, 6}, 
-        {4, 9, 9, 1, 1},
-        {2, 1, 1, 1, 6}, 
-        {2, 2, 2, 2, 1}
+    // Initialize MxN real matrix rmat used to compute rank of mxn matrix where m > n
+    double rmat_init[][N] = {
+        {1.1,   4.0,  9,   2,   2},
+        {17.2,  -2.1, 4.2, 1.8, 1.8},
+        {4.9,    6,  -5.1, 2,   2},
+        {-2.5,  11,   13, -14.2, -14.2},
+        {1,     0,    2,   1,     1}
     };
 
-    // Initialize NxN square matrix 
+    // Initialize NxN square matrix used to compute determinant, inverse
     double data[][N] = {
         {1.1, 4.0, 9, 2, 16},
         {17.2, -2.1, 4.2, 1.8, -6},
@@ -322,6 +340,7 @@ int main(void) {
     };
 
     // Allocate memory
+     int *P = malloc(sizeof(int) * N); // Unitary permutation matrix 
     double **rmat = (double **)malloc(sizeof(double *) * N);
     double **matrix = (double **) malloc(sizeof(double *) * N);
     double **lower = (double **) malloc(sizeof(double *) * N);
@@ -332,8 +351,8 @@ int main(void) {
     double **copy2 = (double **)malloc(sizeof(double *) * N);
     double **inverse = (double **)malloc(sizeof(double *) * N);
     double **abs_error = (double **)malloc(sizeof(double *) * N);
-    for (int i = 0; i < M; i++) 
-        rmat[i] = rect[i];
+    for (int i = 0; i < N; i++) 
+        rmat[i] = rmat_init[i];
     for (int i = 0; i < N; i++) {
         // Copy initialized matrix above
         matrix[i] = data[i];
@@ -346,10 +365,9 @@ int main(void) {
         copy1[i] = (double *)malloc(sizeof(double) * N);
         copy2[i] = (double *)malloc(sizeof(double) * N);
         abs_error[i] = (double *)malloc(sizeof(double) * N);
-
     }
 
-    // Copy matrix to copy
+    // Copy matrix to copy:
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++){
             copy1[i][j] = matrix[i][j];
@@ -357,12 +375,11 @@ int main(void) {
         }
     }
 
-    int *P = malloc(sizeof(int) * N); // Unitary permutation matrix 
+    // Compute values and produce output:
     printf("matrix: \n");
     print_matrix(matrix, N);
     printf("rmat \n");
-    print_rect(rmat, M, N);
-    
+    print_matrix(rmat, N);
     if (output == verbose) {
         printf("Decomposing matrix into LU factorization: \n");
         lu_decomposition_with_pivoting(copy1, N, 1e-20, P);
@@ -379,12 +396,13 @@ int main(void) {
     printf("Inverse: \n");
     print_matrix(inverse, N);
     if (output == verbose) {
-        printf("Verifying result,\nA^-1*A = I:\n");
+        printf("Verifying result,\nA^-1 * A = I:\n");
         multiply(inverse, matrix, product2, N);
         print_matrix(product2, N);
     }
     printf("det(matrix) = %f\n", det(matrix, N));
-    printf("Rank(rmat): %i\n", rank(rmat, M, N, eps));
+    printf("Rank(rmat): %i\n", rank(rmat, N, eps));
+
     // Free allocated memory
     free_matrix(lower, N);
     free_matrix(upper, N);
@@ -392,5 +410,7 @@ int main(void) {
     free_matrix(copy1, N);
     free_matrix(copy2, N);
     free_matrix(inverse, N);
+    free(matrix);
+    free(rmat);
     free(P);
 }

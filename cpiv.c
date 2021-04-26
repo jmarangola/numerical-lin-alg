@@ -137,43 +137,57 @@ void reset(double *x, int n) {
     for (int i = 0; i < n; i++) x[i] = 0.0;
 }
 
+void print_rect(double **a, int m, int n) {
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            printf("%.4f  ", a[i][j]);
+        }
+        putchar('\n');
+    }
+    putchar('\n');
+}
+
 int rank(double **a, int m, int n) {
     double **idty = (double **)malloc(sizeof(double *) * n); 
     double *tvec = (double *)malloc(sizeof(double) * n);
     double *col_diff = (double *)malloc(sizeof(double) * n);
-
-    double z[n], v[n], sum_sqs, sum;
-    for (int i = 0; i < n; i++) {
+    double z[m], v[m], sum_sqs, sum;
+    for (int i = 0; i < m; i++) {
         idty[i] = (double *)malloc(sizeof(double) * n);
     }
     eye(idty, m);
-    for (int k = 0; k < n; k++) {
+    for (int k = 0; k < m; k++) {
         reset(v, m);
         reset(z, m);
+        sum_sqs = 0.0;
         for (int i = k; i < m; i++) 
             z[i - k] = a[i][k];
-        v[0] = -sign(z[0]) * sqrt(norm_squared(z, n - k)) - z[0];
+        print_col_vector(z, m-k);
+        v[0] = sign(z[0]) * sqrt(norm_squared(z, m - k)) + z[0];
         sum_sqs += v[0] * v[0];
-        for (int i = 1; i < n; i++) 
-            sum_sqs += z[i] * (v[i] = (z[i]));
-        v[0] = v[0]/sqrt(sum_sqs);
-        for (int i = 1; i < n; i++) 
-            v[i] = -v[i]/sqrt(sum_sqs);
-        print_col_vector(v, m);
-        // Compute HH reflection matrix:
-        for (int j = k; j < n; j++) {
+        for (int i = 1; i < m - k; i++) {
+            v[i] = z[i];
+            sum_sqs += v[i]*v[i];
+        }
+        for (int i = 0; i < m; i++) 
+            v[i] = v[i]/sqrt(sum_sqs);
+        for (int j = k; j < m; j++) {
             sum = 0.0;
-            for (int i = k; i < m; i++)
+            for (int i = k; i < n; i++)
                 sum += v[i - k] * a[i][j];
-            for (int i = k; i < m; i++) {
+            for (int i = k; i < n; i++) {
                 a[i][j] -= 2 * v[i - k] * sum;
             }
-            print_matrix(a, n);
+            print_rect(a, m, n);
         }
 
         
         
     }
+}
+
+void householder(double **a, int m, int n) {
+
 }
 
 /**
@@ -261,6 +275,7 @@ int main(void) {
         {3, 5, 7}, 
         {4, 9, 2}
     };
+
     double **matrix = (double **) malloc(sizeof(double *) * N);
     double **lower = (double **) malloc(sizeof(double *) * N);
     double **upper = (double **) malloc(sizeof(double *) * N);

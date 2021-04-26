@@ -7,8 +7,17 @@
 #include <stdio.h>                     
 #include <stdlib.h>
 
+
 void print_matrix(double **, int);
 void print_col_vector(double *, int);
+
+enum output_type {basic, verbose};
+
+// Parameters for program
+const int M = 5;
+const int N = 5;
+const double eps = 1e-10;
+const enum output_type output = verbose;
 
 void free_matrix(double **mat, int cols) {
     for (int i = 0; i < cols; i++)
@@ -219,6 +228,7 @@ int rank(double **a, int m, int n, double epsilon) {
             for (int i = k; i < n; i++) {
                 a[i][j] -= 2 * v[i - k] * sum;
             }
+            if (output == verbose) print_rect(a, m, n);
         }    
     }
     // Determine rank of matrix with given tolerance epsilon
@@ -285,71 +295,98 @@ void multiply(double **a, double **b, double **c, int n) {
 }
 
 int main(void) {
-    // Size of matrix
+
     
-    const int M = 4;
-    const int N = 4;
-    double data[M][N] = {
-        {8, 1, 6, 2}, 
-        {3, 5, 7, 5}, 
-        {4, 9, 2, 1},
-        {2, 1, 6, 1}
+
+    // Initialize MxN real matrix rmat
+    double rect[M][N] = {
+        {8, 1, 6, 2, 1}, 
+        {3, 5, 7, 5, 6}, 
+        {4, 9, 2, 1, 1},
+        {2, 1, 6, 1, 6}, 
+        {2, 2, 2, 2, 1}
     };
 
+    // Initialize NxN square matrix 
+    double data[][N] = {
+        {1.1, 4.0, 9, 2, 16},
+        {17.2, -2.1, 4.2, 1.8, -6},
+        {4.9, 6, -5.1, 2, 17.8},
+        {-2.5, 11, 13, -14.2, 0.2},
+        {1, 0, 2, 1, 0}
+    };
+
+    // Allocate memory
+    double **rmat = (double **)malloc(sizeof(double *) * N);
     double **matrix = (double **) malloc(sizeof(double *) * N);
     double **lower = (double **) malloc(sizeof(double *) * N);
     double **upper = (double **) malloc(sizeof(double *) * N);
     double **product = (double **) malloc(sizeof(double *) * N);
-    double **copy = (double **)malloc(sizeof(double *) * N);
+    double **product2 = (double **) malloc(sizeof(double *) * N);
+    double **copy1 = (double **)malloc(sizeof(double *) * N);
+    double **copy2 = (double **)malloc(sizeof(double *) * N);
     double **inverse = (double **)malloc(sizeof(double *) * N);
+    double **abs_error = (double **)malloc(sizeof(double *) * N);
+    for (int i = 0; i < M; i++) 
+        rmat[i] = rect[i];
     for (int i = 0; i < N; i++) {
+        // Copy initialized matrix above
         matrix[i] = data[i];
+        // Allocate memory for empty matrices
         lower[i] = (double *)malloc(sizeof(double) * N);
         upper[i] = (double *)malloc(sizeof(double) * N);
         product[i] = (double *)malloc(sizeof(double) * N);
+        product2[i] = (double *)malloc(sizeof(double) * N);
         inverse[i] = (double *)malloc(sizeof(double) * N);
-        copy[i] = (double *)malloc(sizeof(double) * N);
+        copy1[i] = (double *)malloc(sizeof(double) * N);
+        copy2[i] = (double *)malloc(sizeof(double) * N);
+        abs_error[i] = (double *)malloc(sizeof(double) * N);
+
     }
-    double T = 1e-20;
-    int *P = malloc(sizeof(int) * N);
-    printf("Original Matrix A: \n");
-    print_matrix(matrix, N);
-    
+
     // Copy matrix to copy
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++){
-            copy[i][j] = matrix[i][j];
+            copy1[i][j] = matrix[i][j];
+            copy2[i][j] = matrix[i][j];
         }
     }
+
+    int *P = malloc(sizeof(int) * N); // Unitary permutation matrix 
+    printf("matrix: \n");
+    print_matrix(matrix, N);
+    printf("rmat \n");
+    print_rect(rmat, M, N);
     
-    printf("L: \n");
-    /*lu_decomposition_with_pivoting(copy, N, 1e-20, P);
-    printf("P\n");
-    for (int i =0; i <= N; i++)
-        printf("%d\n", P[i]);
     
-    lower_upper(copy, lower, upper, N);
-    print_matrix(lower, N);
-    printf("U: \n");
-    print_matrix(upper, N);
-    printf("L times U: \n");
-    multiply(lower, upper, product, N);
-    print_matrix(product, N);
-    
-    invert(matrix, inverse, N);
+    if (output == verbose) {
+        printf("Decomposing matrix into LU factorization: \n");
+        lu_decomposition_with_pivoting(copy1, N, 1e-20, P);
+        lower_upper(copy1, lower, upper, N);
+        printf("L:\n");
+        print_matrix(lower, N);
+        printf("U:\n");
+        print_matrix(upper, N);
+        multiply(lower, upper, product, N);
+        printf("L times U: \n");
+        print_matrix(product, N);
+    }
+    invert(copy2, inverse, N);
     printf("Inverse: \n");
     print_matrix(inverse, N);
-    
-    printf("rank(A): %d\n", rank(matrix, N, 1e-5));
-    */
-   int rrank = rank(matrix, 4, 4, 1e-10);
-   printf("Rank: %i\n", rrank);
+    if (output == verbose) {
+        printf("A^-1*A = I:\n");
+        multiply(inverse, matrix, product2, N);
+        print_matrix(product2, N);
+    }
+    printf("det(matrix) = %f\n", det(matrix, N));
+    printf("Rank(rmat): %i\n", rank(matrix, M, N, eps));
    
     free_matrix(lower, N);
     free(upper);
     free(matrix);
     free(product);
-    free(copy);
+    free(copy2);
     free(P);
     free(inverse);
 }

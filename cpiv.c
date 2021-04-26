@@ -1,10 +1,20 @@
+/*
+    * John Marangola    
+    * Inverse, Determinant, Rank
+*/
 
-#include <stdio.h>
-#include <math.h>                          
+#include <math.h>     
+#include <stdio.h>                     
 #include <stdlib.h>
 
 void print_matrix(double **, int);
 void print_col_vector(double *, int);
+
+void free_matrix(double **mat, int cols) {
+    for (int i = 0; i < cols; i++)
+        free(mat[i]);
+    free(mat);
+}
 /**
  * @brief Compute the LU decomposition of an nxn square, real matrix a in place using pivoting.
  * The pivoting strategy is preserved within the unitary permutation matrix *p, which has an (n+1)th
@@ -15,7 +25,7 @@ void print_col_vector(double *, int);
  */
 int lu_decomposition_with_pivoting(double **a, int n, double epsilon_zero, int *p) {
     int k, i, j, r_max_index;
-    double r_max, *ptr, absA;
+    double r_max, *ptr, absval;
     // Initialize permutation matrix
     for (i = 0; i <= n; i++)
         p[i] = i;
@@ -24,8 +34,8 @@ int lu_decomposition_with_pivoting(double **a, int n, double epsilon_zero, int *
         r_max = 0.0;
         r_max_index = i;
         for (k = i; k < n; k++) {
-            if ((absA = fabs(a[k][i])) > r_max) {
-                r_max = absA;
+            if ((absval = fabs(a[k][i])) > r_max) {
+                r_max = absval;
                 r_max_index = k;
             }
         }
@@ -83,11 +93,28 @@ void lu_decomposition_without_pivoting(double **a, int n) {
 }
 
 /**
+ * @brief Separate lower and upper triangular matrices l and u, respectively 
+ * from a mutated matrix where lu decomp was performed "in place". Merely 
+ * implemented for the purposes of visualizing solutions.
+ */
+void lower_upper(double **a, double **lower, double **upper, int n) {
+    int i, j;
+    for (i =0 ; i < n; i++) {
+        for (j = 0; j < i; j++) {
+            lower[i][j] = a[i][j];
+        }
+        lower[j][j] = 1; 
+        for (j = i; j < n; j++) 
+            upper[i][j] = a[i][j];
+    }
+}
+
+/**
  * @brief Computes and stores the inverse of a real, square (nxn) matrix a in
  * inverse. Utilizes LU decomposition with pivoting, forward substitution and back substitution
- * to solve for the inverse of a providing it is nonsingular.
+ * to solve for the inverse of a matrix providing that it is nonsingular.
  * @c O(n^3)
- * @return <int> 1 if a is non-singular, 0 otherwise.
+ * @return <int> 1 if a is invertible, 0 otherwise.
  */
 int invert(double **a, double **inverse, int n) {
     int *perm = (int *)malloc(sizeof(int) * n);
@@ -113,8 +140,12 @@ int invert(double **a, double **inverse, int n) {
     return 1;
 }
 
+// Compute the sign of a scalar
 int sign(double d) { return ((d >= 0) ? 1: -1); }
 
+/**
+ * @brief Sets id to the nxn identity
+ */
 void eye(double **id, int n) {
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
@@ -128,7 +159,7 @@ void eye(double **id, int n) {
 
 /**
  * @brief Compute squared norm of a real-valued n-dimensional vector.
- * @return double 
+ * @return <double>
  */
 double norm_squared(double *x, int n) {
     double value = 0.0;
@@ -159,23 +190,19 @@ void print_rect(double **a, int m, int n) {
 /**
  * @brief Computes the rank of a real-valued mxn matrix a.
  * Method utilizes a rank-revealing QR factorization (RRQR)
-
  * @param epsilon tolerance to numerical accumulation 
  * @return <int> rank of matrix  
  */
 int rank(double **a, int m, int n, double epsilon) {
-    double **idty = (double **)malloc(sizeof(double *) * n); 
-    double *tvec = (double *)malloc(sizeof(double) * n);
-    double *col_diff = (double *)malloc(sizeof(double) * n);
     double z[m], v[m], sum_sqs, sum;
     for (int k = 0; k < m; k++) {
         reset(v, m);
         reset(z, m);
         sum_sqs = 0.0;
-        // Determine z vector 
+        // Slice z from current col of matrix a (z = A_{:k})
         for (int i = k; i < m; i++) 
             z[i - k] = a[i][k];
-        // Compute vector v from z
+        // Determine the Householder reflector
         v[0] = sign(z[0]) * sqrt(norm_squared(z, m - k)) + z[0];
         sum_sqs += v[0] * v[0];
         for (int i = 1; i < m - k; i++) {
@@ -184,7 +211,7 @@ int rank(double **a, int m, int n, double epsilon) {
         }
         for (int i = 0; i < m; i++) 
             v[i] = v[i]/sqrt(sum_sqs);
-        // Apply Householder transformation
+        // Apply the Householder transformation to the current matrix
         for (int j = k; j < m; j++) {
             sum = 0.0;
             for (int i = k; i < n; i++)
@@ -192,33 +219,13 @@ int rank(double **a, int m, int n, double epsilon) {
             for (int i = k; i < n; i++) {
                 a[i][j] -= 2 * v[i - k] * sum;
             }
-            print_rect(a, m, n);
         }    
     }
-    // Determine rank of matrix
+    // Determine rank of matrix with given tolerance epsilon
     int rank = 0;
-    for (int i = 0; i < n; i++) {
-        if (fabs(a[i][i]) > epsilon)
-            rank++;
-    }
+    for (int i = 0; i < n; i++)
+        if (fabs(a[i][i]) > epsilon) rank++;
     return rank;
-}
-
-/**
- * @brief Separate lower and upper triangular matrices l and u, respectively 
- * from a mutated matrix where lu decomp was performed "in place". Merely 
- * implemented for the purposes of visualizing solutions.
- */
-void lower_upper(double **a, double **lower, double **upper, int n) {
-    int i, j;
-    for (i =0 ; i < n; i++) {
-        for (j = 0; j < i; j++) {
-            lower[i][j] = a[i][j];
-        }
-        lower[j][j] = 1; 
-        for (j = i; j < n; j++) 
-            upper[i][j] = a[i][j];
-    }
 }
 
 /**
@@ -241,6 +248,9 @@ double det(double **a, int n) {
     return (!(tperm % 2)) ? det : -det;
 }
 
+/**
+ * @brief Outputs an n-dim column vector x
+ */
 void print_col_vector(double *x, int n) {
     for (int i = 0; i < n; i++) 
         printf("%f\n", x[i]);
@@ -261,8 +271,8 @@ void print_matrix(double **matrix, int n) {
 }
 
 /**
- * @brief Perform standard matrix multiplication a times c store
- * result in c. a, b, c are all assumed to be nxn, real matrices.
+ * @brief Perform standard matrix multiplication a times b storing result in c.
+ * a, b, c are all assumed to be nxn, real, (square) matrices.
  */
 void multiply(double **a, double **b, double **c, int n) {
     for (int i = 0; i < n; i++) {
@@ -276,19 +286,14 @@ void multiply(double **a, double **b, double **c, int n) {
 
 int main(void) {
     // Size of matrix
-    const int N = 3;
-    /*double data[][N] = {
-        {1, 2, 3, 1, 2*2},
-        {4, 6, 2, 4, 6*2},
-        {4, 2, 7, 4, 2*2},
-        {3, 5, 3, 3, 5},
-        {2, 1, 2, 2, 1.5}
-    };*/
-
-    double data[][N] = {
-        {8, 1, 6}, 
-        {3, 5, 7}, 
-        {4, 9, 2}
+    
+    const int M = 4;
+    const int N = 4;
+    double data[M][N] = {
+        {8, 1, 6, 2}, 
+        {3, 5, 7, 5}, 
+        {4, 9, 2, 1},
+        {2, 1, 6, 1}
     };
 
     double **matrix = (double **) malloc(sizeof(double *) * N);
@@ -318,9 +323,6 @@ int main(void) {
     }
     
     printf("L: \n");
-
-
-
     /*lu_decomposition_with_pivoting(copy, N, 1e-20, P);
     printf("P\n");
     for (int i =0; i <= N; i++)
@@ -340,10 +342,10 @@ int main(void) {
     
     printf("rank(A): %d\n", rank(matrix, N, 1e-5));
     */
-   int rrank = rank(matrix, 3, 3, 1e-10);
+   int rrank = rank(matrix, 4, 4, 1e-10);
    printf("Rank: %i\n", rrank);
    
-    free(lower);
+    free_matrix(lower, N);
     free(upper);
     free(matrix);
     free(product);

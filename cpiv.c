@@ -126,17 +126,26 @@ void eye(double **id, int n) {
     }
 }
 
-
+/**
+ * @brief Compute squared norm of a real-valued n-dimensional vector.
+ * @return double 
+ */
 double norm_squared(double *x, int n) {
     double value = 0.0;
     for (int i = 0; i < n; i++) value += x[i]*x[i];
     return value;
 }
 
+/**
+ * @brief Set all of the values of an n-dimensional vector x to zero
+ */
 void reset(double *x, int n) {
     for (int i = 0; i < n; i++) x[i] = 0.0;
 }
 
+/**
+ * @brief Prints an mxn matrix a to four decimal places of precision
+ */
 void print_rect(double **a, int m, int n) {
     for (int i = 0; i < m; i++) {
         for (int j = 0; j < n; j++) {
@@ -147,22 +156,26 @@ void print_rect(double **a, int m, int n) {
     putchar('\n');
 }
 
-int rank(double **a, int m, int n) {
+/**
+ * @brief Computes the rank of a real-valued mxn matrix a.
+ * Method utilizes a rank-revealing QR factorization (RRQR)
+
+ * @param epsilon tolerance to numerical accumulation 
+ * @return <int> rank of matrix  
+ */
+int rank(double **a, int m, int n, double epsilon) {
     double **idty = (double **)malloc(sizeof(double *) * n); 
     double *tvec = (double *)malloc(sizeof(double) * n);
     double *col_diff = (double *)malloc(sizeof(double) * n);
     double z[m], v[m], sum_sqs, sum;
-    for (int i = 0; i < m; i++) {
-        idty[i] = (double *)malloc(sizeof(double) * n);
-    }
-    eye(idty, m);
     for (int k = 0; k < m; k++) {
         reset(v, m);
         reset(z, m);
         sum_sqs = 0.0;
+        // Determine z vector 
         for (int i = k; i < m; i++) 
             z[i - k] = a[i][k];
-        print_col_vector(z, m-k);
+        // Compute vector v from z
         v[0] = sign(z[0]) * sqrt(norm_squared(z, m - k)) + z[0];
         sum_sqs += v[0] * v[0];
         for (int i = 1; i < m - k; i++) {
@@ -171,6 +184,7 @@ int rank(double **a, int m, int n) {
         }
         for (int i = 0; i < m; i++) 
             v[i] = v[i]/sqrt(sum_sqs);
+        // Apply Householder transformation
         for (int j = k; j < m; j++) {
             sum = 0.0;
             for (int i = k; i < n; i++)
@@ -179,15 +193,15 @@ int rank(double **a, int m, int n) {
                 a[i][j] -= 2 * v[i - k] * sum;
             }
             print_rect(a, m, n);
-        }
-
-        
-        
+        }    
     }
-}
-
-void householder(double **a, int m, int n) {
-
+    // Determine rank of matrix
+    int rank = 0;
+    for (int i = 0; i < n; i++) {
+        if (fabs(a[i][i]) > epsilon)
+            rank++;
+    }
+    return rank;
 }
 
 /**
@@ -208,10 +222,11 @@ void lower_upper(double **a, double **lower, double **upper, int n) {
 }
 
 /**
- * @brief Computes the determinant for a matrix A ∈ R^{nxn}
- * Provided with the LU decomposition of a matrix, the actual computation 
+ * @brief Computes the determinant for a matrix A, U, L ∈ R^{nxn}
+ * Provided with the LU decomposition of a matrix, the computation 
  * of its determinant is O(n) because det(A) = det(LU) = det(L)det(U) = det(U)
- * U ∈ R^{nxn} (assuming a is non-singular).
+ * since all the diagonal elements of L are taken to be unity and 
+ * the determinant of a triangular matrix is O(n).
  * @return <double> determinant if nonsingular, zero otherwise
  */
 double det(double **a, int n) {
@@ -325,7 +340,9 @@ int main(void) {
     
     printf("rank(A): %d\n", rank(matrix, N, 1e-5));
     */
-   rank(matrix, 3, 3);
+   int rrank = rank(matrix, 3, 3, 1e-10);
+   printf("Rank: %i\n", rrank);
+   
     free(lower);
     free(upper);
     free(matrix);

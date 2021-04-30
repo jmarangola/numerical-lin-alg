@@ -449,7 +449,6 @@ int main(void) {
         multiply(lower, upper, product, N);
         printf("L times U: \n");
         print_matrix(product, N);
-        write_square(N, product, "lucheck.txt");
     }
     invert(copy2, inverse, N);
     printf("Inverse: \n");

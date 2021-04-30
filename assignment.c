@@ -371,7 +371,7 @@ int write_square(size_t n, double **a, const char *file) {
             if (fabs(a[i][j]) < eps) 
                 fprintf(fp, "0.00 ");
             else
-                fprintf(fp, "%.3f ", a[i][j]);
+                fprintf(fp, "%.5f ", a[i][j]);
         }
         fprintf(fp, "\n");
     }
@@ -481,7 +481,6 @@ int main(void) {
     free_matrix(inverse, N);
     free(matrix);
     free(determ);
-    printf("L*U result stored in lucheck.txt\n");
     printf("Inverse stored in: inverse.txt\n");
     printf("A^-1A stored in identity check.txt\n");
 

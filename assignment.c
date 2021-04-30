@@ -13,7 +13,7 @@ enum output_type {basic, verbose};
 const enum output_type output = verbose;
 const enum output_type qr_output = basic;
 
-const int N = 50;
+const int N = 500;
 // Tolerance to accumulation (used for rank computation)
 const double eps = 1e-5;
 
@@ -282,7 +282,7 @@ void det(double **a, int n, double *determinant) {
         *determinant *= a[i][i];
     free(perm);
     // Compute determinant depending on swap parity dervied from permutation operations:
-    *determinant = (!(tperm % 2)) ? *determinant : -determ;
+    *determinant = (!(tperm % 2)) ? *determinant : -*determinant;
 }
 
 /**
@@ -463,7 +463,10 @@ int main(void) {
         print_matrix(product2, N);
         write_square(N, product2, "identity_check.txt");
     }
-    printf("det(matrix) = %f\n", det(matrix, N));
+    double *determ = malloc(sizeof(double) * N * N ); 
+    //printf("det(matrix) = %f\n", det(matrix, N));
+    det(matrix, N, determ);
+    printf("det: %lf\n", *determ);
     printf("Rank(rmat): %i\n", rank(rmat, N, eps));
     // Free allocated memory
     free_matrix(lower, N);
@@ -475,5 +478,6 @@ int main(void) {
     free(matrix);
     free(rmat);
     free(P);
+    free(determ);
 
 }

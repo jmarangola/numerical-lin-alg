@@ -13,15 +13,15 @@
 #include <time.h>
 #include <stdlib.h>
 
-enum output_type {basic, verbose};
+enum output_type {basic, verbose, off};
 // Parameters
-const enum output_type output = verbose;
+const enum output_type output = off;
 const enum output_type qr_output = basic;
 
 const int N = 100;
 
 // Tolerance to accumulation (used for rank computation)
-const double eps = 1e-4;
+const double eps = 1e-8;
 
 void print_matrix(double **, int);
 void print_col_vector(double *, int);
@@ -238,8 +238,8 @@ int rank(double **a, int m, double epsilon) {
     double z[m], v[m], sum_sqs, sum;
     for (int k = 0; k < m; k++) {
         if (qr_output == verbose) printf("k = %d\n", k);
-        reset(v, m);
-        reset(z, m);
+        //reset(v, m);
+        //reset(z, m);
         sum_sqs = 0.0;
         // Slice z from current col of matrix a (z = A_{:k})
         for (int i = k; i < m; i++) 
@@ -430,8 +430,10 @@ int main(void) {
 
 
     init_random(matrix, N);
-    printf("Original Matrix:\n");
-    print_matrix(matrix, N);
+    if (output != off) {
+        printf("Original Matrix:\n");
+        print_matrix(matrix, N);
+    }
     // Write matrix to input.txt
     write_square(N, matrix, "input.txt");
 
@@ -457,16 +459,22 @@ int main(void) {
         printf("L times U: \n");
         print_matrix(product, N);
     }
+
     invert(copy2, inverse, N);
     printf("Inverse: \n");
-    print_matrix(inverse, N);
+    if (output != off)  
+        print_matrix(inverse, N);
+
+    printf("Multiplying A^-1A to check: \n");
+    multiply(inverse, matrix, product2, N);
+    write_square(N, product2, "identity_check.txt");
+    write_square(N, inverse, "inverse.txt");
+
     if (output == verbose) {
         printf("Verifying result,\nA^-1 * A = I:\n");
-        multiply(inverse, matrix, product2, N);
-        write_square(N, inverse, "inverse.txt");
         print_matrix(product2, N);
-        write_square(N, product2, "identity_check.txt");
     }
+
     double *determ = malloc(sizeof(double) * N); 
     //printf("det(matrix) = %f\n", det(matrix, N));
     det(matrix, N, determ);

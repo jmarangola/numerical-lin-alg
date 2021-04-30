@@ -13,9 +13,9 @@ enum output_type {basic, verbose};
 const enum output_type output = verbose;
 const enum output_type qr_output = basic;
 
-const int N = 500;
+const int N = 100;
 // Tolerance to accumulation (used for rank computation)
-const double eps = 1e-5;
+const double eps = 1e-4;
 
 void print_matrix(double **, int);
 void print_col_vector(double *, int);
@@ -393,8 +393,7 @@ void init_random(double **mat, int n) {
 int main(void) {    
 
     // Allocate memory
-     int *P = malloc(sizeof(int) * N); // Unitary permutation matrix 
-    double **rmat = (double **)malloc(sizeof(double *) * N);
+     int P[N];
     double **matrix = (double **) malloc(sizeof(double *) * N);
     double **lower = (double **) malloc(sizeof(double *) * N);
     double **upper = (double **) malloc(sizeof(double *) * N);
@@ -402,6 +401,7 @@ int main(void) {
     double **product2 = (double **) malloc(sizeof(double *) * N);
     double **copy1 = (double **)malloc(sizeof(double *) * N);
     double **copy2 = (double **)malloc(sizeof(double *) * N);
+    double **copy3 = (double**)malloc(sizeof(double *) * N);
     double **inverse = (double **)malloc(sizeof(double *) * N);
     double **abs_error = (double **)malloc(sizeof(double *) * N);
 
@@ -409,7 +409,6 @@ int main(void) {
     for (int i = 0; i < N; i++) {
         // Copy initialized matrix above
         matrix[i] = (double *)malloc(sizeof(double) * N);
-        rmat[i] = (double *)malloc(sizeof(double) * N);
         // Allocate memory for empty matrices
         lower[i] = (double *)malloc(sizeof(double) * N);
         upper[i] = (double *)malloc(sizeof(double) * N);
@@ -418,30 +417,27 @@ int main(void) {
         inverse[i] = (double *)malloc(sizeof(double) * N);
         copy1[i] = (double *)malloc(sizeof(double) * N);
         copy2[i] = (double *)malloc(sizeof(double) * N);
+        copy3[i] = (double *)malloc(sizeof(double) * N);
         abs_error[i] = (double *)malloc(sizeof(double) * N);
     }
 
-    init_random(rmat, N);
 
     init_random(matrix, N);
-    printf("matrix:\n");
-
+    printf("Original Matrix:\n");
     print_matrix(matrix, N);
+    // Write matrix to input.txt
     write_square(N, matrix, "input.txt");
 
-    // Copy matrix to copy:
+    // Copy matrix to copy1, copy2:
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < N; j++){
             copy1[i][j] = matrix[i][j];
             copy2[i][j] = matrix[i][j];
+            copy3[i][j] = matrix[i][j];
         }
     }
 
-    // Compute values and produce output:
-    printf("matrix: \n");
-    print_matrix(matrix, N);
-    printf("rmat \n");
-    print_matrix(rmat, N);
+
     if (output == verbose) {
         printf("Decomposing matrix into LU factorization: \n");
         lu_decomposition_with_pivoting(copy1, N, 1e-20, P);
@@ -453,6 +449,7 @@ int main(void) {
         multiply(lower, upper, product, N);
         printf("L times U: \n");
         print_matrix(product, N);
+        write_square(N, product, "lucheck.txt");
     }
     invert(copy2, inverse, N);
     printf("Inverse: \n");
@@ -460,14 +457,15 @@ int main(void) {
     if (output == verbose) {
         printf("Verifying result,\nA^-1 * A = I:\n");
         multiply(inverse, matrix, product2, N);
+        write_square(N, inverse, "inverse.txt");
         print_matrix(product2, N);
         write_square(N, product2, "identity_check.txt");
     }
-    double *determ = malloc(sizeof(double) * N * N ); 
+    double *determ = malloc(sizeof(double) * N); 
     //printf("det(matrix) = %f\n", det(matrix, N));
     det(matrix, N, determ);
     printf("det: %lf\n", *determ);
-    printf("Rank(rmat): %i\n", rank(rmat, N, eps));
+    printf("Rank: %d\n", rank(copy3, N, eps));
     // Free allocated memory
     free_matrix(lower, N);
     free_matrix(upper, N);
@@ -476,8 +474,10 @@ int main(void) {
     free_matrix(copy2, N);
     free_matrix(inverse, N);
     free(matrix);
-    free(rmat);
-    free(P);
     free(determ);
+    printf("L*U result stored in lucheck.txt\n");
+    printf("Inverse stored in: inverse.txt\n");
+    printf("A^-1A stored in identity check.txt\n");
+
 
 }

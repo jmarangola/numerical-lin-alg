@@ -4,15 +4,16 @@
 */
 
 #include <math.h>     
-#include <stdio.h>                     
+#include <stdio.h>     
+#include <time.h>
 #include <stdlib.h>
 
 enum output_type {basic, verbose};
 // Parameters
-const enum output_type output = basic;
+const enum output_type output = verbose;
 const enum output_type qr_output = basic;
 
-const int N = 5;
+const int N = 50;
 // Tolerance to accumulation (used for rank computation)
 const double eps = 1e-5;
 
@@ -272,16 +273,16 @@ int rank(double **a, int m, double epsilon) {
  * the determinant of a triangular matrix is O(n).
  * @return <double> determinant if nonsingular, zero otherwise
  */
-double det(double **a, int n) {
+void det(double **a, int n, double *determinant) {
     int *perm = (int *)malloc(sizeof(int) * n);
     lu_decomposition_with_pivoting(a, n, 1e-20, perm);
-    double det = a[0][0];
+    *determinant = a[0][0];
     int tperm = perm[n] - n;
     for (int i = 1; i < n; i++)
-        det *= a[i][i];
+        *determinant *= a[i][i];
     free(perm);
     // Compute determinant depending on swap parity dervied from permutation operations:
-    return (!(tperm % 2)) ? det : -det;
+    *determinant = (!(tperm % 2)) ? *determinant : -determ;
 }
 
 /**
@@ -347,24 +348,49 @@ int read_square(size_t n, int **a, const char* file) {
     return 1; 
 }
 
-int main(void) {
-    // Initialize MxN real matrix rmat used to compute rank of mxn matrix where m > n
-    double rmat_init[][N] = {
-        {1.1,   4.0,  9,   2,   2},
-        {17.2,  -2.1, 4.2, 1.8, 1.8},
-        {4.9,    6,  -5.1, 2,   2},
-        {-2.5,  11,   13, -14.2, -14.2},
-        {1,     0,    2,   1,     1}
-    };
+/**
+ * @brief Writes a square matrix to a file
+ * 
+ * @param n Size of square matrix
+ * @param a Square matrix
+ * @param file Output file
+ * @return <int> 1 if file written found, 0 otherwise
+ */
+int write_square(size_t n, double **a, const char *file) {
+    FILE *fp;
+    fp = fopen(file, "w");
+    for (size_t i = 0; i < n; i++) {
+        for (size_t j = 0; j < n; j++) {
+            if (fabs(a[i][j]) < eps) 
+                fprintf(fp, "0.00 ");
+            else
+                fprintf(fp, "%.3f ", a[i][j]);
+        }
+        fprintf(fp, "\n");
+    }
+    fclose(fp);
+    return 1;
+}
 
-    // Initialize NxN square matrix used to compute determinant, inverse
-    double data[][N] = {
-        {1.1, 4.0, 9, 2, 16},
-        {17.2, -2.1, 4.2, 1.8, -6},
-        {4.9, 6, -5.1, 2, 17.8},
-        {-2.5, 11, 13, -14.2, 0.2},
-        {1, 0, 2, 1, 0}
-    };
+/**
+ * @brief Initializes a random square matrix of nxn integers 
+ * 
+ * @param n Dimensions of matrix 
+ * @param mat Matrix
+ */
+void init_random(double **mat, int n) {
+    srand(time(NULL));   // Initialization, should only be called once.
+    for (int i = 0; i < n; i++) {
+        for (int j = 0;j < n; j++) {
+            mat[i][j] = (int) (rand() % 20);  
+        }
+        putchar('\n');
+    }
+    putchar('\n');
+
+}
+
+int main(void) {    
 
     // Allocate memory
      int *P = malloc(sizeof(int) * N); // Unitary permutation matrix 
@@ -378,11 +404,12 @@ int main(void) {
     double **copy2 = (double **)malloc(sizeof(double *) * N);
     double **inverse = (double **)malloc(sizeof(double *) * N);
     double **abs_error = (double **)malloc(sizeof(double *) * N);
-    for (int i = 0; i < N; i++) 
-        rmat[i] = rmat_init[i];
+
+   
     for (int i = 0; i < N; i++) {
         // Copy initialized matrix above
-        matrix[i] = data[i];
+        matrix[i] = (double *)malloc(sizeof(double) * N);
+        rmat[i] = (double *)malloc(sizeof(double) * N);
         // Allocate memory for empty matrices
         lower[i] = (double *)malloc(sizeof(double) * N);
         upper[i] = (double *)malloc(sizeof(double) * N);
@@ -393,6 +420,14 @@ int main(void) {
         copy2[i] = (double *)malloc(sizeof(double) * N);
         abs_error[i] = (double *)malloc(sizeof(double) * N);
     }
+
+    init_random(rmat, N);
+
+    init_random(matrix, N);
+    printf("matrix:\n");
+
+    print_matrix(matrix, N);
+    write_square(N, matrix, "input.txt");
 
     // Copy matrix to copy:
     for (int i = 0; i < N; i++) {
@@ -426,10 +461,10 @@ int main(void) {
         printf("Verifying result,\nA^-1 * A = I:\n");
         multiply(inverse, matrix, product2, N);
         print_matrix(product2, N);
+        write_square(N, product2, "identity_check.txt");
     }
     printf("det(matrix) = %f\n", det(matrix, N));
     printf("Rank(rmat): %i\n", rank(rmat, N, eps));
-
     // Free allocated memory
     free_matrix(lower, N);
     free_matrix(upper, N);
@@ -440,4 +475,5 @@ int main(void) {
     free(matrix);
     free(rmat);
     free(P);
+
 }

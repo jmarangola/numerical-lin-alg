@@ -1,6 +1,11 @@
 /*
-    * John Marangola    
-    * Inverse, Determinant, and Rank
+    * 
+    * John Marangola - marangol@bc.edu
+    * 
+    * Numerical methods for generic, nxn, real matrices implemented in C.
+    * Computes inverse, determinant and rank of an nxn, arbitrary, real (and generic) matrix 
+    * Utilizes standard I/O to store results for large computations where N>>10
+    *  
 */
 
 #include <math.h>     
@@ -14,6 +19,7 @@ const enum output_type output = verbose;
 const enum output_type qr_output = basic;
 
 const int N = 100;
+
 // Tolerance to accumulation (used for rank computation)
 const double eps = 1e-4;
 
@@ -21,7 +27,7 @@ void print_matrix(double **, int);
 void print_col_vector(double *, int);
 
 /**
- * @brief Free an arbitrary colsxn matrix (double **) matrix
+ * @brief Free a matrix
  */
 void free_matrix(double **mat, int cols) {
     for (int i = 0; i < cols; i++)
@@ -124,7 +130,7 @@ void lower_upper(double **a, double **lower, double **upper, int n) {
 }
 
 /**
- * @brief Set all element of matrix a to value
+ * @brief Set all element of matrix a to <int> 'value'
  */
 void set_matrix(double **a, int n, int value) {
     for (int i = 0; i < n; i++) {
@@ -269,8 +275,9 @@ int rank(double **a, int m, double epsilon) {
  * @brief Computes the determinant for a matrix A, U, L ∈ R^{nxn}
  * Provided with the LU decomposition of a matrix, the computation 
  * of its determinant is O(n) because det(A) = det(LU) = det(L)det(U) = det(U)
- * since all the diagonal elements of L are taken to be unity and 
- * the determinant of a triangular matrix is O(n).
+ * since all the diagonal elements of L are taken to be unity (Crout's Method) and 
+ * the determinant of a triangular matrix is O(n). If not provided with LU decomp, 
+ * det(a) is O(n^3).
  * @return <double> determinant if nonsingular, zero otherwise
  */
 void det(double **a, int n, double *determinant) {
@@ -309,7 +316,7 @@ void print_matrix(double **matrix, int n) {
 
 /**
  * @brief Perform standard matrix multiplication a times b storing result in c.
- * a, b, c are all assumed to be nxn, real, (square) matrices.
+ * a, b, c are all assumed to be nxn and real matrices.
  */
 void multiply(double **a, double **b, double **c, int n) {
     for (int i = 0; i < n; i++) {
@@ -353,7 +360,7 @@ int read_square(size_t n, int **a, const char* file) {
  * 
  * @param n Size of square matrix
  * @param a Square matrix
- * @param file Output file
+ * @param file Output filename
  * @return <int> 1 if file written found, 0 otherwise
  */
 int write_square(size_t n, double **a, const char *file) {
